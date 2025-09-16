@@ -59,3 +59,33 @@ h1:focus {
     text-align: start;
 }
 
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh; /* full viewport height */
+    gap: 16px;
+}
+
+.chart-container {
+    flex: 0 0 auto; /* fixed height */
+    height: 300px;
+    position: sticky;
+    top: 0;
+    background-color: white;
+    z-index: 100;
+    border-bottom: 1px solid #ccc;
+    padding: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.grid-container {
+    flex: 1 1 auto;
+    overflow-y: auto; /* enables vertical scrolling */
+}
+.custom-grid thead tr {
+    position: sticky;
+    top: 0;
+    background-color: white; /* Ensure header background */
+    z-index: 10; /* Put header in front */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Optional shadow */
+}
