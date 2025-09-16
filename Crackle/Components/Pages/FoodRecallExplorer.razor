@@ -1,0 +1,80 @@
+@page "/foodrecall"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Syncfusion.Blazor.Charts
+@using System.Text.Json
+
+@rendermode InteractiveServer
+
+@inject HttpClient Http
+@inject NavigationManager NavManager
+
+<SfChart>
+    <ChartPrimaryXAxis ValueType="Syncfusion.Blazor.Charts.ValueType.Category"></ChartPrimaryXAxis>
+    <ChartSeriesCollection>
+        <ChartSeries DataSource="@stateRecallCounts" XName="State" YName="RecallCount" Type="ChartSeriesType.Column" />
+    </ChartSeriesCollection>
+     <ChartTooltipSettings Enable="true"></ChartTooltipSettings>
+</SfChart>
+
+<div class="grid" tabindex="-1">
+    <QuickGrid ItemsProvider="@foodRecallProvider" Virtualize="true" Pagination="@pagination" >
+        <PropertyColumn Title="ID" Property="@(c => c.Event_Id)" />
+        <PropertyColumn Property="@(c => c.State)" />
+        <PropertyColumn Property="@(c => c.City)" />
+        <PropertyColumn Title="Company" Property="@(c => c.Recalling_Firm)" />
+        <PropertyColumn Property="@(c => c.Status)" />
+    </QuickGrid>
+</div>
+
+<p>Total: <strong>@numResults recalls found</strong></p>
+
+<Paginator State="@pagination" />
+
+@code {
+    private PaginationState pagination = new PaginationState { ItemsPerPage = 10 }; // Set items per page
+
+    GridItemsProvider<FoodRecall>? foodRecallProvider;
+    int numResults;
+    List<FoodRecall> resultsList = new ();
+    List<StateRecallCount> stateRecallCounts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Define the GridItemsProvider. Its job is to convert QuickGrid's GridItemsProviderRequest into a query against
+        // an arbitrary data soure. In this example, we need to translate query parameters into the particular URL format
+        // supported by the external JSON API. It's only possible to perform whatever sorting/filtering/etc is supported
+        // by the external API.
+        foodRecallProvider = async req =>
+        {
+
+            var count = req.Count > 0 ? req.Count : -1; // default to 50 if zero or null
+
+            var url = NavManager.GetUriWithQueryParameters("https://api.fda.gov/food/enforcement.json", new Dictionary<string, object?>
+            {
+                { "skip", req.StartIndex },
+                { "limit", count },
+            });
+
+            var response = await Http.GetFromJsonAsync<FoodRecallQueryResult>(url, req.CancellationToken);
+            numResults = response?.Meta?.Results?.Total ?? 0;
+            resultsList = response?.Results;
+            stateRecallCounts = resultsList
+                                .GroupBy(fr => fr.State)
+                                .Select(g => new StateRecallCount
+                                {
+                                    State = g.Key,
+                                    RecallCount = g.Count()
+                                })
+                                .OrderByDescending(x => x.RecallCount)
+                                .ToList();
+
+            // Trigger a re-render after assigning the provider.
+            StateHasChanged();
+
+            return GridItemsProviderResult.From(
+                items: response!.Results,
+                totalItemCount: response!.Meta.Results.Total);
+        };
+    }
+}
