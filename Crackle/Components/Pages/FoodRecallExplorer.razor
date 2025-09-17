@@ -61,25 +61,49 @@
                 { "limit", count },
             });
 
-            var response = await Http.GetFromJsonAsync<FoodRecallQueryResult>(url, req.CancellationToken);
-            numResults = response?.Meta?.Results?.Total ?? 0;
-            resultsList = response?.Results;
-            stateRecallCounts = resultsList
-                                .GroupBy(fr => fr.State)
-                                .Select(g => new StateRecallCount
-                                {
-                                    State = g.Key,
-                                    RecallCount = g.Count()
-                                })
-                                .OrderByDescending(x => x.RecallCount)
-                                .ToList();
+            try
+            {
+                var response = await Http.GetFromJsonAsync<FoodRecallQueryResult>(url, req.CancellationToken);
+                numResults = response?.Meta?.Results?.Total ?? 0;
+                resultsList = response?.Results;
+                stateRecallCounts = resultsList
+                                    .GroupBy(fr => fr.State)
+                                    .Select(g => new StateRecallCount
+                                    {
+                                        State = g.Key,
+                                        RecallCount = g.Count()
+                                    })
+                                    .OrderByDescending(x => x.RecallCount)
+                                    .ToList();
+                // Trigger a re-render after assigning the provider.
+                StateHasChanged();
 
-            // Trigger a re-render after assigning the provider.
-            StateHasChanged();
+                return GridItemsProviderResult.From(
+                    items: response!.Results,
+                    totalItemCount: response!.Meta.Results.Total);
+            }
+            catch (HttpRequestException httpEx)
+            {
+                //Write a console message if request fails.
+                //Room for improvement in a production version
+                Console.WriteLine (httpEx.Message);
+                return GridItemsProviderResult.From(items: Array.Empty<FoodRecall>(), totalItemCount: 0);
+            }
+            catch (JsonException jsonEx)
+            {
+                // Handle JSON parsing errors
+                //Room for improvement in a production version
+                Console.WriteLine (jsonEx.Message);
+                return GridItemsProviderResult.From(items: Array.Empty<FoodRecall>(), totalItemCount: 0);
+            }
+            catch (Exception ex)
+            {
+                // Handle unexpected exceptions
+                //Room for improvement in a production version
+                Console.WriteLine (ex.Message);
+                return GridItemsProviderResult.From(items: Array.Empty<FoodRecall>(), totalItemCount: 0);
 
-            return GridItemsProviderResult.From(
-                items: response!.Results,
-                totalItemCount: response!.Meta.Results.Total);
+            }
         };
     }
 }
