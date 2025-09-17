@@ -66,6 +66,9 @@
                 var response = await Http.GetFromJsonAsync<FoodRecallQueryResult>(url, req.CancellationToken);
                 numResults = response?.Meta?.Results?.Total ?? 0;
                 resultsList = response?.Results;
+
+                //For simplicity (demo purposes) and to avoid unnecessary hits to the endpoint,
+                //summarize only the current page results on the chart
                 stateRecallCounts = resultsList
                                     .GroupBy(fr => fr.State)
                                     .Select(g => new StateRecallCount
