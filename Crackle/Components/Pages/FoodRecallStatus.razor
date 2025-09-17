@@ -1,0 +1,67 @@
+﻿@page "/foodrecallstatus"
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Syncfusion.Blazor.Charts
+@using System.Text.Json
+
+@rendermode InteractiveServer
+
+@inject HttpClient Http
+@inject NavigationManager NavManager
+
+<h3>Food Recall Trend</h3>
+
+<SfAccumulationChart>
+    <AccumulationChartSeriesCollection>
+        <AccumulationChartSeries DataSource="@statusData" XName="Status" YName="Count" Type="AccumulationType.Pie" />
+    </AccumulationChartSeriesCollection>
+</SfAccumulationChart>
+
+
+@code {
+    private List<StatusDataPoint> statusData = new();
+    int numResults;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiResponse>("https://api.fda.gov/food/enforcement.json?limit=300");
+
+            if (response?.Results != null)
+            {
+                // Group results by status and count occurrences
+                statusData = response.Results
+                    .GroupBy(r => r.Status)
+                    .Select(g => new StatusDataPoint { Status = g.Key ?? "Unknown", Count = g.Count() })
+                    .ToList();
+                numResults = statusData.Count();
+            }
+        }
+        catch(HttpRequestException httpEx)
+        {
+            //Write a console message if request fails.
+            //Room for improvement in a production version
+            Console.WriteLine (httpEx.Message);
+        }
+        catch (JsonException jsonEx)
+        {
+            // Handle JSON parsing errors
+            //Room for improvement in a production version
+            Console.WriteLine (jsonEx.Message);
+        }
+        catch (Exception ex)
+        {
+            // Handle unexpected exceptions
+            //Room for improvement in a production version
+            Console.WriteLine (ex.Message);
+        }
+
+    }
+
+    public class StatusDataPoint
+    {
+        public string Status { get; set; }
+        public int Count { get; set; }
+    }
+}
